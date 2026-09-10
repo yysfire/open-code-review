@@ -141,7 +141,7 @@ mindmap
 10. **Agent 构造与运行**（[L210-L262](../../cmd/opencodereview/review_cmd.go#L210-L262)）：组装 `agent.Args`（含 CommentWorkerPool 并发池、SealedInput、MaxTokensBudget、SkipFilter 等 21 个字段），绑定 raw writer（`OCR_RAW_LOGGING=1` 时的原始请求落盘，[bindRawWriter](../../cmd/opencodereview/shared.go#L277-L297)），`newQuietHandle` 静默 stdout，然后开 `review.run` 遥测 span，`ag.Run(runCtx)` 返回 comments 与错误；
 11. **结果冻结与发布**（[L264-L312](../../cmd/opencodereview/review_cmd.go#L264-L312)）：先 `ag.RunManifest()` 冻结覆盖清单，再 `rt.RetryCollector.Freeze` 冻结重试报告（run_id 用内存 UUID 而非可能为空的持久化 ID，注释 L264-L269 论证了为什么）。发布顺序刻意安排：**即使 runErr 非 nil，只要 manifest 构造成功也先 emitRunResult 发布完整结果**（[L288-L295](../../cmd/opencodereview/review_cmd.go#L288-L295)），然后才走失败路径 `emitFailureUsage` + 返回 `errors.Join(resultErr, emitErr)`。
 
-**图 4-1**：review / scan 共享的执行管线
+**图 2-2**：review / scan 共享的执行管线
 
 ```mermaid
 flowchart TB
@@ -342,7 +342,7 @@ preview 明确拒绝 sarif（[outputPreview](../../cmd/opencodereview/output.go#
 - **provider 层 tab**（[L27-L34](../../cmd/opencodereview/provider_tui.go#L27-L34)）：tabOfficial / tabCustom / tabManual；
 - **子表单 step**：custom provider 表单五步（[L36-L44](../../cmd/opencodereview/provider_tui.go#L36-L44)：名称→协议→URL→API key→auth header）、manual 表单五步（[L46-L54](../../cmd/opencodereview/provider_tui.go#L46-L54)：URL→协议→模型→token→auth header）。
 
-**图 9-1**：Provider TUI 状态机（简化，省略删除确认子态）
+**图 2-3**：Provider TUI 状态机（简化，省略删除确认子态）
 
 ```mermaid
 stateDiagram-v2

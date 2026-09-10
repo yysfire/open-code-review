@@ -410,7 +410,7 @@ task_template.json 的每个任务用 `prompt_file` 引用 `prompts/` 下的 Mar
 2. **独有任务**：`DEDUP_TASK`（批内评论去重，[L28-L40](../../internal/config/template/scan_template.json#L28-L40)）与 `PROJECT_SUMMARY_TASK`（全仓扫描总结，[L41-L53](../../internal/config/template/scan_template.json#L41-L53)），归 [09-scan-pipeline.md](09-scan-pipeline.md) 详述。
 3. **独有标量**：`MAX_TOKENS: 58888`、`MAX_TOOL_REQUEST_TIMES: 60`、`MAX_FILE_SIZE_BYTES: 2097152`（2 MB）、`BATCH_STRATEGY: "by-language"`、`BATCH_SIZE: 50`、`DEDUP_MIN_COMMENTS: 4`、`TOOL_REQUEST_WAIT_TIME_MS: 10000`、`MAX_SUBTASK_EXECUTION_TIME_MINUTES: 5`（[L80-L88](../../internal/config/template/scan_template.json#L80-L88)）。
 
-一个如实记录的观察：scan_template.json 每个任务对象还带 `timeout` 字段（90-180 秒，如 [L13](../../internal/config/template/scan_template.json#L13)），但 `ScanTemplate`/`LlmConversation`（review 侧，[L342-L350](../../internal/config/template/template.go#L342-L350)）均未声明该字段，`json.Unmarshal` 会忽略之；scan 的实际运行超时由 `MAX_SUBTASK_EXECUTION_TIME_MINUTES` 驱动（[scan/agent.go](../../internal/scan/agent.go#L655) 换算 `ConcurrentTaskTimeout`）。该字段是否为预留，**待与维护者确认**。
+一个如实记录的观察：scan_template.json 每个任务对象还带 `timeout` 字段（90-180 秒，如 [L13](../../internal/config/template/scan_template.json#L13)），但 `ScanTemplate`/`LlmConversation`（review 侧，[L342-L350](../../internal/config/template/template.go#L342-L350)）均未声明该字段，`json.Unmarshal` 会忽略之；scan 的实际运行超时由 CLI `--timeout`（默认 15 分钟，[shared_flags.go](../../cmd/opencodereview/shared_flags.go#L232)）→ `Args.ConcurrentTaskTimeout`（[scan_cmd.go](../../cmd/opencodereview/scan_cmd.go#L210)）→ [scan/agent.go](../../internal/scan/agent.go#L655) 驱动。该字段是否为预留，**待与维护者确认**。
 
 scan 的 MAIN_TASK prompt 与 review 版有可感知的差异（[L6](../../internal/config/template/scan_template.json#L6)）：声明"reviewing an ENTIRE existing source file (no diff context)"，并加入工具预算纪律——"文件内容已在 `<current_file_content>` 中，不要调 `file_read` 重新读取；每个 finding 最多 2-3 次上下文调用；批量提交 `code_comment`"。
 
@@ -644,6 +644,6 @@ internal/config 下非测试 `.go` 共 7 个、数据资产 JSON 共 7 个、pro
 
 ### 待与维护者确认项
 
-1. scan_template.json 各任务的 `timeout` 字段（90-180s）未被 `ScanTemplate` 结构体消费，`json.Unmarshal` 静默忽略；scan 实际超时由 `MAX_SUBTASK_EXECUTION_TIME_MINUTES` 驱动。该字段是预留还是遗留？
+1. scan_template.json 各任务的 `timeout` 字段（90-180s）未被 `ScanTemplate` 结构体消费，`json.Unmarshal` 静默忽略；此外 `TOOL_REQUEST_WAIT_TIME_MS` 与 `MAX_SUBTASK_EXECUTION_TIME_MINUTES` 虽在 [template.go](../../internal/config/template/template.go#L43-L45) 声明、[scan_template.json](../../internal/config/template/scan_template.json#L87-L88) 有值，但全仓无消费点——scan 实际超时由 CLI `--timeout`（默认 15 分钟）→ `ConcurrentTaskTimeout` 驱动。这些字段是预留还是遗留？（经 [09-scan-pipeline.md](09-scan-pipeline.md) 8.2 节从 scan 侧复核，已修正本文早前「超时由 MAX_SUBTASK_EXECUTION_TIME_MINUTES 驱动」的错误断言。）
 2. `EffortPreset` 目前唯一旋钮是 `MaxReviewRounds`，不影响 prompt 文本与 token 预算；后续是否有扩展计划？
 3. `objc.md` 当前内容是 `default.md` 的占位副本（[sniffer_test.go#L58-L61](../../internal/config/rules/sniffer_test.go#L58-L61) 注释证实），正式的 Objective-C 专属规则文档是否在计划中？
